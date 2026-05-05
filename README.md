@@ -105,7 +105,18 @@ SmartIoT/
 │   └── types/         # TypeScript interfaces
 ├── App.tsx            # Main app entry and providers
 └── index.tsx          # Expo entry point
+└── arduino/           # ESP32 firmware code for sensor fetching & control
 ```
+
+## 🛠️ Arduino Setup (ESP32)
+
+The `arduino/` folder contains the source code for your ESP32. This code:
+1.  Connects to your local Wi-Fi.
+2.  Reads environmental sensors (pH, EC, Gas, etc.).
+3.  Pushes data to Firebase under `/sensors/latest`.
+4.  Listens for motor commands from the app under `/motor/status`.
+
+**Required Library:** [Firebase ESP Client](https://github.com/mobizt/Firebase-ESP-Client) by Mobizt.
 
 ---
 
