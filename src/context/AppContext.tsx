@@ -8,7 +8,8 @@ import React, {
 } from 'react';
 import { Alert } from 'react-native';
 import { ref, onValue, set, get } from 'firebase/database';
-import { db } from '../firebase/config';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { db, auth } from '../firebase/config';
 import type {
   SensorReading,
   MotorStatus,
@@ -19,6 +20,9 @@ import type {
 } from '../types';
 
 // ─── Defaults ────────────────────────────────────────────────────────────────
+const USER_EMAIL = process.env.EXPO_PUBLIC_USER_EMAIL || '';
+const USER_PASS = process.env.EXPO_PUBLIC_USER_PASSWORD || '';
+
 const DEFAULT_THRESHOLDS: Thresholds = {
   phMin: 6.0,
   phMax: 8.0,
@@ -106,51 +110,65 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   // ─── Firebase: Listen to sensor data ────────────────────────────────────────
-  // When your IoT device writes to Firebase Realtime DB at path /sensors/latest
-  // this listener will pick it up automatically. Until you have a real device,
-  // the simulated ticker below keeps data flowing.
   useEffect(() => {
-    const sensorRef = ref(db, 'sensors/latest');
-    const unsubscribe = onValue(
-      sensorRef,
-      (snapshot) => {
-        const val = snapshot.val();
-        if (val && typeof val.ph === 'number') {
-          const newData: SensorReading = {
-            ph: val.ph ?? INITIAL_SENSOR_DATA.ph,
-            ec: val.ec ?? INITIAL_SENSOR_DATA.ec,
-            gas: val.gas ?? INITIAL_SENSOR_DATA.gas,
-            temperature: val.temperature ?? INITIAL_SENSOR_DATA.temperature,
-            humidity: val.humidity ?? INITIAL_SENSOR_DATA.humidity,
-            waterTemp: val.waterTemp ?? INITIAL_SENSOR_DATA.waterTemp,
-            timestamp: val.timestamp ?? new Date().toISOString(),
-          };
-          setSensorData(newData);
-          setLastUpdated(new Date());
-          setHistory((prev) => [...prev.slice(-49), newData]);
-          setIsConnected(true);
+    let unsubscribe: (() => void) | undefined;
 
-          const currentAlerts = checkAlerts(newData, thresholds);
-          setAlerts(currentAlerts);
-
-          if (mode === 'AUTO') {
-            const autoStatus = evaluateMotor(newData, thresholds);
-            setMotorStatus(autoStatus);
-            // Sync motor status to Firebase
-            set(ref(db, 'motor/status'), autoStatus).catch(() => null);
-          }
+    const setupListener = async () => {
+      try {
+        if (!auth.currentUser) {
+          await signInWithEmailAndPassword(auth, USER_EMAIL, USER_PASS);
+          console.log('[Firebase] App Authenticated successfully');
         }
-      },
-      (error) => {
-        console.warn('[Firebase] Sensor read error:', error.message);
-        setIsConnected(false);
-      }
-    );
 
-    return () => unsubscribe();
+        const sensorRef = ref(db, 'sensors/latest');
+        unsubscribe = onValue(
+          sensorRef,
+          (snapshot) => {
+            const val = snapshot.val();
+            if (val && typeof val.ph === 'number') {
+              const newData: SensorReading = {
+                ph: val.ph ?? INITIAL_SENSOR_DATA.ph,
+                ec: val.ec ?? INITIAL_SENSOR_DATA.ec,
+                gas: val.gas ?? INITIAL_SENSOR_DATA.gas,
+                temperature: val.temperature ?? INITIAL_SENSOR_DATA.temperature,
+                humidity: val.humidity ?? INITIAL_SENSOR_DATA.humidity,
+                waterTemp: val.waterTemp ?? INITIAL_SENSOR_DATA.waterTemp,
+                timestamp: val.timestamp ?? new Date().toISOString(),
+              };
+              setSensorData(newData);
+              setLastUpdated(new Date());
+              setHistory((prev) => [...prev.slice(-49), newData]);
+              setIsConnected(true);
+
+              const currentAlerts = checkAlerts(newData, thresholds);
+              setAlerts(currentAlerts);
+
+              if (mode === 'AUTO') {
+                const autoStatus = evaluateMotor(newData, thresholds);
+                setMotorStatus(autoStatus);
+                set(ref(db, 'motor/status'), autoStatus).catch(() => null);
+              }
+            }
+          },
+          (error) => {
+            console.warn('[Firebase] Sensor read error:', error.message);
+            setIsConnected(false);
+          }
+        );
+      } catch (err: any) {
+        console.error('[Firebase] Auth Error:', err.message);
+        Alert.alert('Auth Error', 'Failed to authenticate with Firebase.');
+      }
+    };
+
+    setupListener();
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, [thresholds, mode, checkAlerts, evaluateMotor]);
 
-  // ─── Firebase: Listen to motor status (for real device sync) ────────────────
+  // ─── Firebase: Listen to motor status ───────────────────────────────────────
   useEffect(() => {
     const motorRef = ref(db, 'motor/status');
     const unsubscribe = onValue(motorRef, (snapshot) => {
@@ -162,7 +180,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => unsubscribe();
   }, []);
 
-  // ─── Simulated sensor ticker (runs until Firebase has real device data) ─────
+  // ─── Simulated sensor ticker (fallback) ─────────────────────────────────────
   useEffect(() => {
     const tick = () => {
       const prev = sensorDataRef.current;
@@ -179,15 +197,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         timestamp: new Date().toISOString(),
       };
 
-      // Push simulated reading to Firebase so listeners fire
       set(ref(db, 'sensors/latest'), newData).catch(() => {
-        // Firebase not configured yet – update local state directly
         setSensorData(newData);
         setLastUpdated(new Date());
         setHistory((prev2) => [...prev2.slice(-49), newData]);
-
-        const currentAlerts = checkAlerts(newData, DEFAULT_THRESHOLDS);
-        setAlerts(currentAlerts);
+        setAlerts(checkAlerts(newData, DEFAULT_THRESHOLDS));
       });
     };
 
@@ -207,7 +221,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const newStatus: MotorStatus = motorStatus === 'ON' ? 'OFF' : 'ON';
       await set(ref(db, 'motor/status'), newStatus);
-      setMotorStatus(newStatus); // optimistic update
+      setMotorStatus(newStatus);
     } catch (err) {
       Alert.alert('Error', 'Failed to update motor status.');
     } finally {
@@ -221,7 +235,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const updateThresholds = useCallback((newThresholds: Thresholds) => {
     setThresholds(newThresholds);
-    // Persist to Firebase so all devices share the same thresholds
     set(ref(db, 'config/thresholds'), newThresholds).catch(() => null);
   }, []);
 

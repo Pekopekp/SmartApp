@@ -1,5 +1,9 @@
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { getDatabase, Database } from 'firebase/database';
+import { initializeAuth, Auth } from 'firebase/auth';
+// @ts-ignore
+import { getReactNativePersistence } from 'firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ─── Firebase config loaded from .env ────────────────────────────────────────
 // All variables must be prefixed with EXPO_PUBLIC_ to be accessible in the app.
@@ -23,4 +27,10 @@ if (getApps().length === 0) {
 }
 
 export const db: Database = getDatabase(app);
+
+// Initialize Auth with Persistence for React Native
+export const auth: Auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(AsyncStorage),
+});
+
 export default app;
