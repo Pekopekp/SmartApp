@@ -186,43 +186,43 @@ const LogsScreen: React.FC = () => {
     {
       title: 'pH Level', icon: 'flask-outline', gradColors: colors.gradPh,
       data: history.map((h) => h.ph), unit: 'pH',
-      min: Math.min(...history.map((h) => h.ph)),
-      max: Math.max(...history.map((h) => h.ph)),
+      min: history.length ? Math.min(...history.map((h) => h.ph)) : 0,
+      max: history.length ? Math.max(...history.map((h) => h.ph)) : 0,
       current: sensorData.ph,
     },
     {
       title: 'Conductivity', icon: 'pulse-outline', gradColors: colors.gradEc,
       data: history.map((h) => h.ec), unit: 'mS/cm',
-      min: Math.min(...history.map((h) => h.ec)),
-      max: Math.max(...history.map((h) => h.ec)),
+      min: history.length ? Math.min(...history.map((h) => h.ec)) : 0,
+      max: history.length ? Math.max(...history.map((h) => h.ec)) : 0,
       current: sensorData.ec,
     },
     {
       title: 'Gas Level (MQ2)', icon: 'cloud-outline', gradColors: colors.gradGas,
       data: history.map((h) => h.gas), unit: 'ppm',
-      min: Math.min(...history.map((h) => h.gas)),
-      max: Math.max(...history.map((h) => h.gas)),
+      min: history.length ? Math.min(...history.map((h) => h.gas)) : 0,
+      max: history.length ? Math.max(...history.map((h) => h.gas)) : 0,
       current: sensorData.gas,
     },
     {
       title: 'Temperature', icon: 'thermometer-outline', gradColors: colors.gradTemp,
       data: history.map((h) => h.temperature), unit: '°C',
-      min: Math.min(...history.map((h) => h.temperature)),
-      max: Math.max(...history.map((h) => h.temperature)),
+      min: history.length ? Math.min(...history.map((h) => h.temperature)) : 0,
+      max: history.length ? Math.max(...history.map((h) => h.temperature)) : 0,
       current: sensorData.temperature,
     },
     {
       title: 'Humidity', icon: 'water-outline', gradColors: colors.gradHumidity,
       data: history.map((h) => h.humidity), unit: '%',
-      min: Math.min(...history.map((h) => h.humidity)),
-      max: Math.max(...history.map((h) => h.humidity)),
+      min: history.length ? Math.min(...history.map((h) => h.humidity)) : 0,
+      max: history.length ? Math.max(...history.map((h) => h.humidity)) : 0,
       current: sensorData.humidity,
     },
     {
       title: 'Water Temperature', icon: 'thermometer-outline', gradColors: colors.gradWater,
       data: history.map((h) => h.waterTemp), unit: '°C',
-      min: Math.min(...history.map((h) => h.waterTemp)),
-      max: Math.max(...history.map((h) => h.waterTemp)),
+      min: history.length ? Math.min(...history.map((h) => h.waterTemp)) : 0,
+      max: history.length ? Math.max(...history.map((h) => h.waterTemp)) : 0,
       current: sensorData.waterTemp,
     },
   ];
@@ -286,28 +286,34 @@ const LogsScreen: React.FC = () => {
                   <Text key={h} style={styles.logHeaderCell}>{h}</Text>
                 ))}
               </View>
-              {recentLogs.map((log, index) => {
-                const time = new Date(log.timestamp).toLocaleTimeString([], {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                });
-                return (
-                  <View
-                    key={index}
-                    style={[
-                      styles.logRow,
-                      index % 2 === 0 ? styles.logRowEven : styles.logRowOdd,
-                    ]}
-                  >
-                    <Text style={styles.logCellTime}>{time}</Text>
-                    <Text style={styles.logCell}>{log.ph.toFixed(1)}</Text>
-                    <Text style={styles.logCell}>{log.ec.toFixed(1)}</Text>
-                    <Text style={styles.logCell}>{log.gas}</Text>
-                    <Text style={styles.logCell}>{log.temperature.toFixed(1)}</Text>
-                    <Text style={styles.logCell}>{log.waterTemp.toFixed(1)}</Text>
-                  </View>
-                );
-              })}
+              {recentLogs.length > 0 ? (
+                recentLogs.map((log, index) => {
+                  const time = new Date(log.timestamp).toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  });
+                  return (
+                    <View
+                      key={index}
+                      style={[
+                        styles.logRow,
+                        index % 2 === 0 ? styles.logRowEven : styles.logRowOdd,
+                      ]}
+                    >
+                      <Text style={styles.logCellTime}>{time}</Text>
+                      <Text style={styles.logCell}>{log.ph.toFixed(1)}</Text>
+                      <Text style={styles.logCell}>{log.ec.toFixed(1)}</Text>
+                      <Text style={styles.logCell}>{log.gas}</Text>
+                      <Text style={styles.logCell}>{log.temperature.toFixed(1)}</Text>
+                      <Text style={styles.logCell}>{log.waterTemp.toFixed(1)}</Text>
+                    </View>
+                  );
+                })
+              ) : (
+                <View style={styles.emptyRow}>
+                  <Text style={styles.emptyText}>No data available yet</Text>
+                </View>
+              )}
             </View>
           </>
         )}
@@ -467,6 +473,16 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textAlign: 'center',
     fontFamily: 'monospace',
+  },
+  emptyRow: {
+    padding: spacing.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyText: {
+    fontSize: typography.sizes.sm,
+    color: colors.textMuted,
+    fontStyle: 'italic',
   },
 });
 

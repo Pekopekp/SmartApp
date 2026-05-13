@@ -48,7 +48,7 @@ export interface AppContextValue {
   alerts: AppAlert[];
   dismissAlert: (id: number) => void;
   isConnected: boolean;
-  lastUpdated: Date;
+  lastUpdated: Date | null;
   toggleMotor: () => Promise<void>;
   isFetchingMotor: boolean;
 }

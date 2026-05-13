@@ -34,32 +34,17 @@ const DEFAULT_THRESHOLDS: Thresholds = {
 };
 
 const INITIAL_SENSOR_DATA: SensorReading = {
-  ph: 6.5,
-  ec: 1.2,
-  gas: 300,
-  temperature: 28,
-  humidity: 60,
-  waterTemp: 25,
+  ph: 0,
+  ec: 0,
+  gas: 0,
+  temperature: 0,
+  humidity: 0,
+  waterTemp: 0,
   timestamp: new Date().toISOString(),
 };
 
-// ─── Mock history ─────────────────────────────────────────────────────────────
-const generateHistory = (): SensorReading[] => {
-  const history: SensorReading[] = [];
-  const now = Date.now();
-  for (let i = 29; i >= 0; i--) {
-    history.push({
-      ph: +(6 + Math.random() * 2).toFixed(2),
-      ec: +(0.8 + Math.random() * 2).toFixed(2),
-      gas: Math.floor(200 + Math.random() * 400),
-      temperature: +(24 + Math.random() * 12).toFixed(1),
-      humidity: +(45 + Math.random() * 40).toFixed(1),
-      waterTemp: +(20 + Math.random() * 12).toFixed(1),
-      timestamp: new Date(now - i * 60_000).toISOString(),
-    });
-  }
-  return history;
-};
+// ─── Mock history (Disabled) ───────────────────────────────────────────────────
+const generateHistory = (): SensorReading[] => [];
 
 // ─── Context ──────────────────────────────────────────────────────────────────
 const AppContext = createContext<AppContextValue | null>(null);
@@ -71,8 +56,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [thresholds, setThresholds] = useState<Thresholds>(DEFAULT_THRESHOLDS);
   const [history, setHistory] = useState<SensorReading[]>(generateHistory());
   const [alerts, setAlerts] = useState<AppAlert[]>([]);
-  const [isConnected, setIsConnected] = useState<boolean>(true);
-  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [isConnected, setIsConnected] = useState<boolean>(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [isFetchingMotor, setIsFetchingMotor] = useState<boolean>(false);
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -81,6 +66,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // ─── Alert checker ──────────────────────────────────────────────────────────
   const checkAlerts = useCallback((data: SensorReading, thresh: Thresholds): AppAlert[] => {
+    if (!lastUpdated) return [];
     const newAlerts: AppAlert[] = [];
     const t = Date.now();
     if (data.ph < thresh.phMin)
@@ -125,14 +111,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           sensorRef,
           (snapshot) => {
             const val = snapshot.val();
-            if (val && typeof val.ph === 'number') {
+            if (val) {
               const newData: SensorReading = {
-                ph: val.ph ?? INITIAL_SENSOR_DATA.ph,
-                ec: val.ec ?? INITIAL_SENSOR_DATA.ec,
-                gas: val.gas ?? INITIAL_SENSOR_DATA.gas,
-                temperature: val.temperature ?? INITIAL_SENSOR_DATA.temperature,
-                humidity: val.humidity ?? INITIAL_SENSOR_DATA.humidity,
-                waterTemp: val.waterTemp ?? INITIAL_SENSOR_DATA.waterTemp,
+                ph: val.ph ?? 0,
+                ec: val.ec ?? 0,
+                gas: val.gas ?? 0,
+                temperature: val.temperature ?? 0,
+                humidity: val.humidity ?? 0,
+                waterTemp: val.waterTemp ?? 0,
                 timestamp: val.timestamp ?? new Date().toISOString(),
               };
               setSensorData(newData);
@@ -180,36 +166,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => unsubscribe();
   }, []);
 
-  // ─── Simulated sensor ticker (fallback) ─────────────────────────────────────
-  useEffect(() => {
-    const tick = () => {
-      const prev = sensorDataRef.current;
-      const fluctuate = (base: number, range: number) =>
-        +(base + (Math.random() - 0.5) * range).toFixed(2);
-
-      const newData: SensorReading = {
-        ph: Math.max(0, Math.min(14, fluctuate(prev.ph, 0.4))),
-        ec: Math.max(0, fluctuate(prev.ec, 0.2)),
-        gas: Math.max(0, Math.round(prev.gas + (Math.random() - 0.5) * 50)),
-        temperature: Math.max(0, fluctuate(prev.temperature, 1)),
-        humidity: Math.max(0, Math.min(100, fluctuate(prev.humidity, 3))),
-        waterTemp: Math.max(0, fluctuate(prev.waterTemp, 0.8)),
-        timestamp: new Date().toISOString(),
-      };
-
-      set(ref(db, 'sensors/latest'), newData).catch(() => {
-        setSensorData(newData);
-        setLastUpdated(new Date());
-        setHistory((prev2) => [...prev2.slice(-49), newData]);
-        setAlerts(checkAlerts(newData, DEFAULT_THRESHOLDS));
-      });
-    };
-
-    intervalRef.current = setInterval(tick, 3000);
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [checkAlerts]);
+  // ─── Simulated sensor ticker (REMOVED) ─────────────────────────────────────
 
   // ─── Toggle motor (Manual mode) ─────────────────────────────────────────────
   const toggleMotor = useCallback(async () => {

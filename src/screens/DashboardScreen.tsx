@@ -63,11 +63,13 @@ const DashboardScreen: React.FC = () => {
     setTimeout(() => setRefreshing(false), 1000);
   };
 
-  const timeStr = lastUpdated.toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  });
+  const timeStr = lastUpdated
+    ? lastUpdated.toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      })
+    : 'Never';
 
   const sensorCards: Array<{
     key: keyof Omit<SensorReading, 'timestamp'>;
