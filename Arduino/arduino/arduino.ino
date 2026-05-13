@@ -3,14 +3,14 @@
 #include "addons/TokenHelper.h"
 #include "addons/RTDBHelper.h"
 
-#define WIFI_SSID     "sool"
-#define WIFI_PASSWORD "123456789"
-#define API_KEY       "AIzaSyB4l21rPqtVF4XiShCFirYvEuOWft0PqBc"
-#define DATABASE_URL  "https://smartiot-adcd1-default-rtdb.asia-southeast1.firebasedatabase.app"
+#define WIFI_SSID     "**********"
+#define WIFI_PASSWORD "**********"
+#define API_KEY       "**********"
+#define DATABASE_URL  "**********"
 
 // ── Firebase Auth Credentials ─────────────────────────────────────────────────
-#define USER_EMAIL    "sanaba771@gmail.com"
-#define USER_PASSWORD "123456"
+#define USER_EMAIL    "**********"
+#define USER_PASSWORD "**********"
 
 FirebaseData fbdo;
 FirebaseData fbdoMotor;
